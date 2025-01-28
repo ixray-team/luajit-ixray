@@ -55,21 +55,13 @@ install(
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/bc.lua
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/bcsave.lua
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_arm.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_arm64.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_arm64be.lua
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mips.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mips64.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mips64el.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mips64r6.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mips64r6el.lua
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mipsel.lua
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_ppc.lua
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_x64.lua
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_x86.lua
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/dump.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/p.lua
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/v.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/zone.lua
         ${CMAKE_CURRENT_SOURCE_DIR}/jit/vmdef.lua
     DESTINATION share/luajit-${MAJVER}.${MINVER}
     COMPONENT luajit
