@@ -23,7 +23,7 @@ extern PNTAVM ntavm;
 // Луаджит выделяет память кусками, кратными 128К
 // Поэтому сделаю два пула по эти размеры
 #define CHUNK_SIZE (128 * 1024)
-#define CHUNK_COUNT 1024
+#define CHUNK_COUNT 2048
 static int inited = 0;
 void* g_heap;
 char g_heapMap[CHUNK_COUNT + 1];
