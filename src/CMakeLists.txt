@@ -8,6 +8,8 @@ file(GLOB LIBLUAJIT_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/lj_*.h
     ${CMAKE_CURRENT_SOURCE_DIR}/lib_*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/lib_*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/xr_*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/xr_*.h
 )
 
 source_group("" FILES ${LIBLUAJIT_SRC})
