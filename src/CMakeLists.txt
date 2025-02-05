@@ -1,8 +1,6 @@
 # Project for LuaJIT
 project(luajit LANGUAGES C)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LJDYNBUILD}")
-
 file(GLOB LIBLUAJIT_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/lj_*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/lj_*.h
@@ -14,16 +12,21 @@ source_group("" FILES ${LIBLUAJIT_SRC})
 
 add_library(${PROJECT_NAME} SHARED ${LIBLUAJIT_SRC})
 add_dependencies(${PROJECT_NAME} gendef)
+
+target_compile_options(${PROJECT_NAME} PRIVATE ${LJCOMPILE_FLAGS})
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${LJCOMPILE_DEFS})
+
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_options(${PROJECT_NAME} PRIVATE ${LJLINK})
 
 if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ${LJDYNBUILD})
     target_link_options(${PROJECT_NAME} PRIVATE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY_EX}/lj_vm.obj)
     set_target_properties(${PROJECT_NAME}
         PROPERTIES
             OUTPUT_NAME lua${NODOTABIVER}
     )
 elseif(UNIX)
+    target_compile_options(${PROJECT_NAME} PRIVATE ${LJDYNBUILD})
     target_link_libraries(${PROJECT_NAME} PRIVATE $<TARGET_OBJECTS:lj_vm>)
     set_target_properties(${PROJECT_NAME}
         PROPERTIES
@@ -100,8 +103,11 @@ if(LUAJIT_ENABLE_CLI)
     )
 
     add_dependencies(${PROJECT_NAME} luajit)
+
+    target_compile_options(${PROJECT_NAME} PRIVATE ${LJCOMPILE_FLAGS})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ${LJCOMPILE_DEFS})
+
     target_link_libraries(${PROJECT_NAME} PRIVATE luajit)
-    target_link_options(${PROJECT_NAME} PRIVATE ${LJLINK})
 
     if(LIBM_LIBRARY)
         target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBM_LIBRARY})

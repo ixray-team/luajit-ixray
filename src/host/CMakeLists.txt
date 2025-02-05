@@ -9,6 +9,9 @@ source_group("" FILES ${MINILUA_SRC})
 
 add_executable(${PROJECT_NAME} ${MINILUA_SRC})
 
+target_compile_options(${PROJECT_NAME} PRIVATE ${LJCOMPILE_FLAGS})
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${LJCOMPILE_DEFS})
+
 if(LIBM_LIBRARY)
     target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBM_LIBRARY})
 endif()
@@ -87,6 +90,9 @@ file(GLOB BUILDVM_SRC
 source_group("" FILES ${BUILDVM_SRC})
 
 add_executable(${PROJECT_NAME} ${BUILDVM_SRC})
+
+target_compile_options(${PROJECT_NAME} PRIVATE ${LJCOMPILE_FLAGS})
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${LJCOMPILE_DEFS})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -212,6 +218,9 @@ elseif(UNIX)
     enable_language(ASM)
 
     add_library(lj_vm OBJECT ${CMAKE_SOURCE_DIR}/src/lj_vm.S)
+
+    target_compile_options(lj_vm PRIVATE ${LJCOMPILE_FLAGS})
+    target_compile_definitions(lj_vm PRIVATE ${LJCOMPILE_DEFS})
 endif()
 
 add_dependencies(${PROJECT_NAME} buildvm)
