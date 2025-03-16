@@ -41,44 +41,6 @@ if(NOT LUA_COMMAND)
     add_dependencies(${PROJECT_NAME} minilua)
 endif()
 
-# Project for GenVersion
-project(genversion)
-
-if(EXISTS ${CMAKE_SOURCE_DIR}/.git AND Git_FOUND)
-    execute_process(
-        COMMAND ${GIT_EXECUTABLE}
-            show -s --format=%ct
-        OUTPUT_FILE ${CMAKE_SOURCE_DIR}/src/luajit_relver.txt
-    )
-else()
-    execute_process(
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_SOURCE_DIR}/.relver
-            ${CMAKE_SOURCE_DIR}/src/luajit_relver.txt
-    )
-endif()
-
-if(NOT LUA_COMMAND)
-    set(MINILUA_COMMAND $<TARGET_FILE:minilua>)
-    set(LUA_COMMAND ${MINILUA_COMMAND})
-endif()
-
-add_custom_command(
-    COMMAND ${LUA_COMMAND}
-        ${CMAKE_SOURCE_DIR}/src/host/genversion.lua
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/luajit.h
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
-    COMMENT "Generating luajit.h..."
-)
-
-add_custom_target(${PROJECT_NAME}
-    DEPENDS ${CMAKE_SOURCE_DIR}/src/luajit.h
-)
-
-if(NOT LUA_COMMAND)
-    add_dependencies(${PROJECT_NAME} minilua)
-endif()
-
 # Project for BuildVM
 project(buildvm LANGUAGES C)
 
@@ -99,7 +61,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/dynasm)
 
 add_dependencies(${PROJECT_NAME} dynasm)
-add_dependencies(${PROJECT_NAME} genversion)
 
 # Project for GenDef
 project(gendef)
