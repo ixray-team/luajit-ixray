@@ -7,6 +7,10 @@
     ],
 
     "settings": {
+        "files.associations": {
+            "*.cmake.in": "cmake"
+        },
+
         "cmake.automaticReconfigure": false,
         "cmake.configureOnOpen": false,
         "cmake.configureOnEdit": false

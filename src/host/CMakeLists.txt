@@ -1,187 +1,228 @@
 # Project for MiniLua
-project(minilua LANGUAGES C)
-
-set(MINILUA_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/minilua.c
+project(minilua
+    LANGUAGES C
+    VERSION ${LUAJIT_VERSION_MAJOR}.${LUAJIT_VERSION_MINOR}
 )
 
-source_group("" FILES ${MINILUA_SRC})
+set(MINILUA_SOURCES
+    ${LUAJIT_ROOT_FOLDER}/src/host/minilua.c
+)
 
-add_executable(${PROJECT_NAME} ${MINILUA_SRC})
+source_group("MiniLua" FILES ${MINILUA_SOURCES})
 
-target_compile_options(${PROJECT_NAME} PRIVATE ${LJCOMPILE_FLAGS})
-target_compile_definitions(${PROJECT_NAME} PRIVATE ${LJCOMPILE_DEFS})
+if(NOT LUA_COMMAND)
+    add_executable(${PROJECT_NAME} ${MINILUA_SOURCES})
+    add_executable(LuaJIT::MiniLua ALIAS ${PROJECT_NAME})
 
-if(LIBM_LIBRARY)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBM_LIBRARY})
+    target_compile_options(${PROJECT_NAME} PRIVATE ${LUAJIT_COMPILE_FLAGS})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ${LUAJIT_COMPILE_DEFINES})
+
+    target_link_options(${PROJECT_NAME} PRIVATE ${LUAJIT_LINK_FLAGS})
+
+    set(MINILUA_TARGET $<TARGET_FILE:LuaJIT::MiniLua>)
+    set(LUA_COMMAND ${MINILUA_TARGET})
+
+    if(LINUX)
+        target_link_libraries(${PROJECT_NAME} PRIVATE LibM::Library)
+    endif()
 endif()
 
 # Project for DynAsm
-project(dynasm)
+project(dynasm
+    VERSION ${LUAJIT_VERSION_MAJOR}.${LUAJIT_VERSION_MINOR}
+)
 
-if(NOT LUA_COMMAND)
-    set(MINILUA_COMMAND $<TARGET_FILE:minilua>)
-    set(LUA_COMMAND ${MINILUA_COMMAND})
-endif()
+set(DASM_COMMAND ${LUAJIT_ROOT_FOLDER}/dynasm/dynasm.lua)
 
 add_custom_command(
-    COMMAND ${LUA_COMMAND} ${DASM}
-        -LN ${DASMFLAGS}
-        -o ${CMAKE_SOURCE_DIR}/src/host/buildvm_arch.h
-        ${DASC}
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/host/buildvm_arch.h
+    COMMAND
+        ${LUA_COMMAND}
+        ${DASM_COMMAND}
+        -LN ${DASM_FLAGS}
+        -o ${LUAJIT_BUILD_FOLDER}/src/host/buildvm_arch.h
+        ${DASC_FILE}
+    OUTPUT ${LUAJIT_BUILD_FOLDER}/src/host/buildvm_arch.h
     COMMENT "Generating buildvm_arch.h..."
 )
 
 add_custom_target(${PROJECT_NAME}
-    DEPENDS ${CMAKE_SOURCE_DIR}/src/host/buildvm_arch.h
+    DEPENDS
+        ${LUAJIT_BUILD_FOLDER}/src/host/buildvm_arch.h
 )
 
 if(NOT LUA_COMMAND)
-    add_dependencies(${PROJECT_NAME} minilua)
+    add_dependencies(${PROJECT_NAME} LuaJIT::MiniLua)
 endif()
 
 # Project for BuildVM
-project(buildvm LANGUAGES C)
-
-file(GLOB BUILDVM_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/buildvm*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/buildvm*.h
+project(buildvm
+    LANGUAGES C
+    VERSION ${LUAJIT_VERSION_MAJOR}.${LUAJIT_VERSION_MINOR}
 )
 
-source_group("" FILES ${BUILDVM_SRC})
+file(GLOB BUILDVM_HEADERS
+    ${LUAJIT_ROOT_FOLDER}/src/host/buildvm*.h
+)
+file(GLOB BUILDVM_SOURCES
+    ${LUAJIT_ROOT_FOLDER}/src/host/buildvm*.c
+)
 
-add_executable(${PROJECT_NAME} ${BUILDVM_SRC})
+source_group("BuildVM" FILES ${BUILDVM_HEADERS})
+source_group("BuildVM" FILES ${BUILDVM_SOURCES})
 
-target_compile_options(${PROJECT_NAME} PRIVATE ${LJCOMPILE_FLAGS})
-target_compile_definitions(${PROJECT_NAME} PRIVATE ${LJCOMPILE_DEFS})
+add_executable(${PROJECT_NAME}
+    ${BUILDVM_HEADERS}
+    ${BUILDVM_SOURCES}
+)
+add_executable(LuaJIT::BuildVM ALIAS ${PROJECT_NAME})
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/dynasm)
+target_include_directories(${PROJECT_NAME} PRIVATE ${LUAJIT_ROOT_FOLDER}/src)
+target_include_directories(${PROJECT_NAME} PRIVATE ${LUAJIT_ROOT_FOLDER}/src/host)
+target_include_directories(${PROJECT_NAME} PRIVATE ${LUAJIT_ROOT_FOLDER}/dynasm)
+target_include_directories(${PROJECT_NAME} PRIVATE ${LUAJIT_BUILD_FOLDER}/src/host)
+
+target_compile_options(${PROJECT_NAME} PRIVATE ${LUAJIT_COMPILE_FLAGS})
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${LUAJIT_COMPILE_DEFINES})
+
+target_link_options(${PROJECT_NAME} PRIVATE ${LUAJIT_LINK_FLAGS})
 
 add_dependencies(${PROJECT_NAME} dynasm)
 
-# Project for GenDef
-project(gendef)
+set(BUILDVM_TARGET $<TARGET_FILE:LuaJIT::BuildVM>)
+set(BUILDVM_COMMAND ${BUILDVM_TARGET})
 
-set(ALL_LIB_SRC
-    ${CMAKE_SOURCE_DIR}/src/lib_base.c
-    ${CMAKE_SOURCE_DIR}/src/lib_math.c
-    ${CMAKE_SOURCE_DIR}/src/lib_bit.c
-    ${CMAKE_SOURCE_DIR}/src/lib_string.c
-    ${CMAKE_SOURCE_DIR}/src/lib_table.c
-    ${CMAKE_SOURCE_DIR}/src/lib_io.c
-    ${CMAKE_SOURCE_DIR}/src/lib_os.c
-    ${CMAKE_SOURCE_DIR}/src/lib_package.c
-    ${CMAKE_SOURCE_DIR}/src/lib_debug.c
-    ${CMAKE_SOURCE_DIR}/src/lib_jit.c
-    ${CMAKE_SOURCE_DIR}/src/lib_ffi.c
-    ${CMAKE_SOURCE_DIR}/src/lib_buffer.c
+# Project for GenDef
+project(gendef
+    VERSION ${LUAJIT_VERSION_MAJOR}.${LUAJIT_VERSION_MINOR}
+)
+
+set(GENDEF_INPUT_FILES
+    ${LUAJIT_ROOT_FOLDER}/src/lib_base.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_math.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_bit.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_string.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_table.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_io.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_os.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_package.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_debug.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_jit.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_ffi.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_buffer.c
+)
+
+file(MAKE_DIRECTORY ${LUAJIT_BUILD_FOLDER}/src/jit)
+
+add_custom_command(
+    COMMAND
+        ${BUILDVM_COMMAND}
+            -m bcdef
+            -o ${LUAJIT_BUILD_FOLDER}/src/lj_bcdef.h
+            ${GENDEF_INPUT_FILES}
+    OUTPUT ${LUAJIT_BUILD_FOLDER}/src/lj_bcdef.h
+    COMMENT "Generating lj_bcdef.h..."
+    WORKING_DIRECTORY ${LUAJIT_ROOT_FOLDER}
+)
+add_custom_command(
+    COMMAND
+        ${BUILDVM_COMMAND}
+        -m ffdef
+        -o ${LUAJIT_BUILD_FOLDER}/src/lj_ffdef.h
+        ${GENDEF_INPUT_FILES}
+    OUTPUT ${LUAJIT_BUILD_FOLDER}/src/lj_ffdef.h
+    COMMENT "Generating lj_ffdef.h..."
+    WORKING_DIRECTORY ${LUAJIT_ROOT_FOLDER}
+)
+add_custom_command(
+    COMMAND
+        ${BUILDVM_COMMAND}
+        -m libdef
+        -o ${LUAJIT_BUILD_FOLDER}/src/lj_libdef.h
+        ${GENDEF_INPUT_FILES}
+    OUTPUT ${LUAJIT_BUILD_FOLDER}/src/lj_libdef.h
+    COMMENT "Generating lj_libdef.h..."
+    WORKING_DIRECTORY ${LUAJIT_ROOT_FOLDER}
+)
+add_custom_command(
+    COMMAND
+        ${BUILDVM_COMMAND}
+        -m recdef
+        -o ${LUAJIT_BUILD_FOLDER}/src/lj_recdef.h
+        ${GENDEF_INPUT_FILES}
+    OUTPUT ${LUAJIT_BUILD_FOLDER}/src/lj_recdef.h
+    COMMENT "Generating lj_recdef.h..."
+    WORKING_DIRECTORY ${LUAJIT_ROOT_FOLDER}
+)
+add_custom_command(
+    COMMAND
+        ${BUILDVM_COMMAND}
+        -m vmdef
+        -o ${LUAJIT_BUILD_FOLDER}/src/jit/vmdef.lua
+        ${GENDEF_INPUT_FILES}
+    OUTPUT ${LUAJIT_BUILD_FOLDER}/src/jit/vmdef.lua
+    COMMENT "Generating vmdef.lua..."
+    WORKING_DIRECTORY ${LUAJIT_ROOT_FOLDER}
+)
+
+add_custom_command(
+    COMMAND
+        ${BUILDVM_COMMAND}
+        -m folddef
+        -o ${LUAJIT_BUILD_FOLDER}/src/lj_folddef.h
+        ${LUAJIT_ROOT_FOLDER}/src/lj_opt_fold.c
+    OUTPUT ${LUAJIT_BUILD_FOLDER}/src/lj_folddef.h
+    COMMENT "Generating lj_folddef.h..."
+    WORKING_DIRECTORY ${LUAJIT_ROOT_FOLDER}
+)
+
+set(GENDEF_OUTPUT_FILES
+    ${LUAJIT_BUILD_FOLDER}/src/lj_bcdef.h
+    ${LUAJIT_BUILD_FOLDER}/src/lj_ffdef.h
+    ${LUAJIT_BUILD_FOLDER}/src/lj_libdef.h
+    ${LUAJIT_BUILD_FOLDER}/src/lj_recdef.h
+    ${LUAJIT_BUILD_FOLDER}/src/jit/vmdef.lua
+    ${LUAJIT_BUILD_FOLDER}/src/lj_folddef.h
 )
 
 if(WIN32)
     add_custom_command(
-        COMMAND $<TARGET_FILE:buildvm>
-            -m ${LJVM_MODE}
-            -o ${CMAKE_LIBRARY_OUTPUT_DIRECTORY_EX}/lj_vm.obj
-        OUTPUT ${CMAKE_LIBRARY_OUTPUT_DIRECTORY_EX}/lj_vm.obj
+        COMMAND
+            ${BUILDVM_COMMAND}
+            -m ${LUAJIT_VM_MODE}
+            -o ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<CONFIG>/lj_vm.obj
+        OUTPUT ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<CONFIG>/lj_vm.obj
         COMMENT "Generating lj_vm.obj..."
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        WORKING_DIRECTORY ${LUAJIT_ROOT_FOLDER}
+    )
+
+    add_custom_target(${PROJECT_NAME}
+        DEPENDS
+            ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<CONFIG>/lj_vm.obj
+            ${GENDEF_OUTPUT_FILES}
     )
 elseif(UNIX)
     add_custom_command(
-        COMMAND $<TARGET_FILE:buildvm>
-            -m ${LJVM_MODE}
-            -o ${CMAKE_SOURCE_DIR}/src/lj_vm.S
-        OUTPUT ${CMAKE_SOURCE_DIR}/src/lj_vm.S
+        COMMAND
+            ${BUILDVM_COMMAND}
+            -m ${LUAJIT_VM_MODE}
+            -o ${LUAJIT_BUILD_FOLDER}/src/lj_vm.S
+        OUTPUT ${LUAJIT_BUILD_FOLDER}/src/lj_vm.S
         COMMENT "Generating lj_vm.S..."
     )
-endif()
 
-add_custom_command(
-    COMMAND $<TARGET_FILE:buildvm>
-        -m bcdef
-        -o ${CMAKE_SOURCE_DIR}/src/lj_bcdef.h
-        ${ALL_LIB_SRC}
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/lj_bcdef.h
-    COMMENT "Generating lj_bcdef.h..."
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-add_custom_command(
-    COMMAND $<TARGET_FILE:buildvm>
-        -m ffdef
-        -o ${CMAKE_SOURCE_DIR}/src/lj_ffdef.h
-        ${ALL_LIB_SRC}
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/lj_ffdef.h
-    COMMENT "Generating lj_ffdef.h..."
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-add_custom_command(
-    COMMAND $<TARGET_FILE:buildvm>
-        -m libdef
-        -o ${CMAKE_SOURCE_DIR}/src/lj_libdef.h
-        ${ALL_LIB_SRC}
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/lj_libdef.h
-    COMMENT "Generating lj_libdef.h..."
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-add_custom_command(
-    COMMAND $<TARGET_FILE:buildvm>
-        -m recdef
-        -o ${CMAKE_SOURCE_DIR}/src/lj_recdef.h
-        ${ALL_LIB_SRC}
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/lj_recdef.h
-    COMMENT "Generating lj_recdef.h..."
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-add_custom_command(
-    COMMAND $<TARGET_FILE:buildvm>
-        -m vmdef
-        -o ${CMAKE_SOURCE_DIR}/src/jit/vmdef.lua
-        ${ALL_LIB_SRC}
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/jit/vmdef.lua
-    COMMENT "Generating vmdef.lua..."
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-add_custom_command(
-    COMMAND $<TARGET_FILE:buildvm>
-        -m folddef
-        -o ${CMAKE_SOURCE_DIR}/src/lj_folddef.h
-        ${CMAKE_SOURCE_DIR}/src/lj_opt_fold.c
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/lj_folddef.h
-    COMMENT "Generating lj_folddef.h..."
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-
-if(WIN32)
     add_custom_target(${PROJECT_NAME}
         DEPENDS
-            ${CMAKE_LIBRARY_OUTPUT_DIRECTORY_EX}/lj_vm.obj
-            ${CMAKE_SOURCE_DIR}/src/lj_bcdef.h
-            ${CMAKE_SOURCE_DIR}/src/lj_ffdef.h
-            ${CMAKE_SOURCE_DIR}/src/lj_libdef.h
-            ${CMAKE_SOURCE_DIR}/src/lj_recdef.h
-            ${CMAKE_SOURCE_DIR}/src/jit/vmdef.lua
-            ${CMAKE_SOURCE_DIR}/src/lj_folddef.h
-    )
-elseif(UNIX)
-    add_custom_target(${PROJECT_NAME}
-        DEPENDS
-            ${CMAKE_SOURCE_DIR}/src/lj_bcdef.h
-            ${CMAKE_SOURCE_DIR}/src/lj_ffdef.h
-            ${CMAKE_SOURCE_DIR}/src/lj_libdef.h
-            ${CMAKE_SOURCE_DIR}/src/lj_recdef.h
-            ${CMAKE_SOURCE_DIR}/src/jit/vmdef.lua
-            ${CMAKE_SOURCE_DIR}/src/lj_folddef.h
+            ${GENDEF_OUTPUT_FILES}
     )
 
     enable_language(ASM)
 
-    add_library(lj_vm OBJECT ${CMAKE_SOURCE_DIR}/src/lj_vm.S)
+    add_library(lj_vm OBJECT ${LUAJIT_BUILD_FOLDER}/src/lj_vm.S)
 
-    target_compile_options(lj_vm PRIVATE ${LJCOMPILE_FLAGS})
-    target_compile_definitions(lj_vm PRIVATE ${LJCOMPILE_DEFS})
+    target_compile_options(lj_vm PRIVATE ${LUAJIT_COMPILE_FLAGS})
+    target_compile_definitions(lj_vm PRIVATE ${LUAJIT_COMPILE_DEFINES})
+
+    target_link_options(lj_vm PRIVATE ${LUAJIT_LINK_FLAGS})
 endif()
 
-add_dependencies(${PROJECT_NAME} buildvm)
+add_dependencies(${PROJECT_NAME} LuaJIT::BuildVM)

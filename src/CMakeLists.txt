@@ -1,124 +1,184 @@
-# Project for LuaJIT
-project(luajit LANGUAGES C)
-
-file(GLOB LIBLUAJIT_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/lj_*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/lj_*.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/lib_*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/lib_*.h
+# Project for LuaJIT library
+project(libluajit
+    LANGUAGES C
+    VERSION ${LUAJIT_VERSION_MAJOR}.${LUAJIT_VERSION_MINOR}
 )
 
-source_group("" FILES ${LIBLUAJIT_SRC})
+file(GLOB LIBRARY_HEADERS
+    ${LUAJIT_ROOT_FOLDER}/src/lj_*.h
+    ${LUAJIT_ROOT_FOLDER}/src/lib_*.h
+)
+file(GLOB LIBRARY_SOURCES
+    ${LUAJIT_ROOT_FOLDER}/src/lj_*.c
+    ${LUAJIT_ROOT_FOLDER}/src/lib_*.c
+)
 
-add_library(${PROJECT_NAME} SHARED ${LIBLUAJIT_SRC})
+if(WIN32 AND MSVC)
+    configure_file(
+        ${LUAJIT_ROOT_FOLDER}/cmake/libluajit.rc.in
+        ${LUAJIT_BUILD_FOLDER}/res/libluajit.rc
+    )
+    set(LIBRARY_RESOURCES
+        ${LUAJIT_BUILD_FOLDER}/res/libluajit.rc
+    )
+endif()
+
+source_group("Library" FILES ${LIBRARY_HEADERS})
+source_group("Library" FILES ${LIBRARY_SOURCES})
+source_group("Resources" FILES ${LIBRARY_RESOURCES})
+
+add_library(${PROJECT_NAME} SHARED
+    ${LIBRARY_HEADERS}
+    ${LIBRARY_SOURCES}
+    ${LIBRARY_RESOURCES}
+)
+add_library(LuaJIT::Library ALIAS ${PROJECT_NAME})
+
+set_target_properties(${PROJECT_NAME}
+    PROPERTIES
+        ENABLE_EXPORTS TRUE
+)
+
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+        $<BUILD_INTERFACE:${LUAJIT_ROOT_FOLDER}/src>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/luajit-${LUAJIT_VERSION_MAJOR}.${LUAJIT_VERSION_MINOR}>
+)
+target_include_directories(${PROJECT_NAME} PRIVATE ${LUAJIT_ROOT_FOLDER}/src)
+target_include_directories(${PROJECT_NAME} PRIVATE ${LUAJIT_BUILD_FOLDER}/src)
+
+target_compile_options(${PROJECT_NAME} PRIVATE ${LUAJIT_COMPILE_FLAGS})
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${LUAJIT_COMPILE_DEFINES})
+
+target_link_options(${PROJECT_NAME} PRIVATE ${LUAJIT_LINK_FLAGS})
+
+generate_symbols(${PROJECT_NAME})
+
+generate_manifest(
+    ${LUAJIT_ROOT_FOLDER}/cmake/libluajit.dll.manifest.in
+    ${LUAJIT_BUILD_FOLDER}/res/libluajit.dll.manifest
+)
+embed_manifest(${PROJECT_NAME}
+    DLL
+    ${LUAJIT_BUILD_FOLDER}/res/libluajit.dll.manifest
+)
+
 add_dependencies(${PROJECT_NAME} gendef)
 
-target_compile_options(${PROJECT_NAME} PRIVATE ${LJCOMPILE_FLAGS})
-target_compile_definitions(${PROJECT_NAME} PRIVATE ${LJCOMPILE_DEFS})
-
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
-
 if(WIN32)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE ${LJDYNBUILD})
-    target_link_options(${PROJECT_NAME} PRIVATE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY_EX}/lj_vm.obj)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ${LUAJIT_COMPILE_DEFINES_DYNAMIC})
+    target_link_options(${PROJECT_NAME} PRIVATE ${LUAJIT_LINK_FLAGS})
+    target_link_options(${PROJECT_NAME} PRIVATE ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<CONFIG>/lj_vm.obj)
+
     set_target_properties(${PROJECT_NAME}
         PROPERTIES
-            OUTPUT_NAME lua${NODOTABIVER}
+            OUTPUT_NAME lua${LUAJIT_NODOTABI_VERSION}
     )
-elseif(UNIX)
-    target_compile_options(${PROJECT_NAME} PRIVATE ${LJDYNBUILD})
+elseif(LINUX AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(${PROJECT_NAME} PRIVATE ${LUAJIT_COMPILE_DEFINES_DYNAMIC})
     target_link_libraries(${PROJECT_NAME} PRIVATE $<TARGET_OBJECTS:lj_vm>)
+
     set_target_properties(${PROJECT_NAME}
         PROPERTIES
-            VERSION ${MAJVER}.${MINVER}
-            SOVERSION ${MAJVER}
+            OUTPUT_NAME luajit
+            VERSION ${LUAJIT_VERSION_MAJOR}.${LUAJIT_VERSION_MINOR}
+            SOVERSION ${LUAJIT_VERSION_MAJOR}
+            INSTALL_RPATH "$ORIGIN"
+            BUILD_WITH_INSTALL_RPATH TRUE
+    )
+elseif(APPLE AND CMAKE_C_COMPILER_ID MATCHES "AppleClang")
+    target_link_libraries(${PROJECT_NAME} PRIVATE $<TARGET_OBJECTS:lj_vm>)
+
+    set_target_properties(${PROJECT_NAME}
+        PROPERTIES
+            OUTPUT_NAME luajit
+            VERSION ${LUAJIT_VERSION_MAJOR}.${LUAJIT_VERSION_MINOR}
+            SOVERSION ${LUAJIT_VERSION_MAJOR}
+            MACOSX_RPATH TRUE
+            INSTALL_NAME_DIR "@rpath"
+            INSTALL_RPATH "@loader_path;@loader_path/../lib;@loader_path/../../lib/$<CONFIG>"
+            BUILD_WITH_INSTALL_RPATH TRUE
+            XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym"
     )
 endif()
 
-install(
-    TARGETS luajit
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    COMPONENT luajit
-)
-install(
-    FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/lua.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/lualib.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/lauxlib.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/luaconf.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/lua.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/luajit.h
-    DESTINATION include/luajit-${MAJVER}.${MINVER}
-    COMPONENT luajit
-)
-install(
-    FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/bc.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/bcsave.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_arm.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_arm64.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_arm64be.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mips.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mips64.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mips64el.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mips64r6.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mips64r6el.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_mipsel.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_ppc.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_x64.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dis_x86.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/dump.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/p.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/v.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/zone.lua
-        ${CMAKE_CURRENT_SOURCE_DIR}/jit/vmdef.lua
-    DESTINATION share/luajit-${MAJVER}.${MINVER}
-    COMPONENT luajit
+# Project for LuaJIT application
+project(luajit
+    LANGUAGES C
+    VERSION ${LUAJIT_VERSION_MAJOR}.${LUAJIT_VERSION_MINOR}
 )
 
-if(WIN32)
-    install(
-        FILES ${CMAKE_LIBRARY_OUTPUT_DIRECTORY_EX}/$<TARGET_FILE_BASE_NAME:luajit>.exp
-        DESTINATION lib
-        COMPONENT luajit
+set(APPLICATION_SOURCES
+    ${LUAJIT_ROOT_FOLDER}/src/luajit.c
+)
+
+if(WIN32 AND MSVC)
+    configure_file(
+        ${LUAJIT_ROOT_FOLDER}/cmake/luajit.rc.in
+        ${LUAJIT_BUILD_FOLDER}/res/luajit.rc
+    )
+    set(APPLICATION_RESOURCES
+        ${LUAJIT_BUILD_FOLDER}/res/luajit.rc
     )
 endif()
 
-# Project for LuaJIT CLI
-project(luajitcli LANGUAGES C)
+source_group("Application" FILES ${APPLICATION_SOURCES})
+source_group("Resources" FILES ${APPLICATION_RESOURCES})
 
-set(LUAJIT_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/luajit.c
-)
+if(LUAJIT_ENABLE_APPLICATION)
+    add_executable(${PROJECT_NAME}
+        ${APPLICATION_SOURCES}
+        ${APPLICATION_RESOURCES}
+    )
+    add_executable(LuaJIT::Application ALIAS ${PROJECT_NAME})
 
-source_group("" FILES ${LUAJIT_SRC})
+    target_compile_options(${PROJECT_NAME} PRIVATE ${LUAJIT_COMPILE_FLAGS})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ${LUAJIT_COMPILE_DEFINES})
 
-if(LUAJIT_ENABLE_CLI)
-    add_executable(${PROJECT_NAME} ${LUAJIT_SRC})
-    set_target_properties(${PROJECT_NAME}
-        PROPERTIES
-            OUTPUT_NAME "luajit"
+    target_link_options(${PROJECT_NAME} PRIVATE ${LUAJIT_LINK_FLAGS})
+
+    generate_symbols(${PROJECT_NAME})
+
+    generate_manifest(
+        ${LUAJIT_ROOT_FOLDER}/cmake/luajit.exe.manifest.in
+        ${LUAJIT_BUILD_FOLDER}/res/luajit.exe.manifest
+    )
+    embed_manifest(${PROJECT_NAME}
+        EXE
+        ${LUAJIT_BUILD_FOLDER}/res/luajit.exe.manifest
     )
 
-    add_dependencies(${PROJECT_NAME} luajit)
+    add_dependencies(${PROJECT_NAME} LuaJIT::Library)
+    target_link_libraries(${PROJECT_NAME} PRIVATE LuaJIT::Library)
 
-    target_compile_options(${PROJECT_NAME} PRIVATE ${LJCOMPILE_FLAGS})
-    target_compile_definitions(${PROJECT_NAME} PRIVATE ${LJCOMPILE_DEFS})
+    if(WIN32 AND MSVC)
+        target_link_options(${PROJECT_NAME} PRIVATE ${LUA_LINK_FLAGS})
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE luajit)
-
-    if(LIBM_LIBRARY)
-        target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBM_LIBRARY})
+        set_target_properties(${PROJECT_NAME}
+            PROPERTIES
+                OUTPUT_NAME luajit
+        )
+    elseif(LINUX AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        set_target_properties(${PROJECT_NAME}
+            PROPERTIES
+                OUTPUT_NAME luajit
+                INSTALL_RPATH "$ORIGIN:$ORIGIN/../lib:$ORIGIN/../../lib/$<CONFIG>"
+                BUILD_WITH_INSTALL_RPATH TRUE
+        )
+    elseif(APPLE AND CMAKE_C_COMPILER_ID MATCHES "AppleClang")
+        set_target_properties(${PROJECT_NAME}
+            PROPERTIES
+                OUTPUT_NAME luajit
+                MACOSX_RPATH TRUE
+                INSTALL_NAME_DIR "@rpath"
+                INSTALL_RPATH "@executable_path;@executable_path/../lib;@executable_path/../../lib/$<CONFIG>"
+                BUILD_WITH_INSTALL_RPATH TRUE
+                XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym"
+        )
     endif()
-    if(LIBDL_LIBRARY)
-        target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBDL_LIBRARY})
-    endif()
 
-    install(
-        TARGETS luajitcli
-        RUNTIME DESTINATION bin
-        COMPONENT luajit-cli
-    )
+    if(LINUX)
+        target_link_libraries(${PROJECT_NAME} PRIVATE LibM::Library)
+        target_link_libraries(${PROJECT_NAME} PRIVATE LibDl::Library)
+    endif()
 endif()
